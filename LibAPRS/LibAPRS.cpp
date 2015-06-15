@@ -49,6 +49,7 @@ int message_seq = 0;
 char lastMessage[67];
 size_t lastMessageLen;
 bool message_autoAck = false;
+
 /////////////////////////
 
 void APRS_init(int reference, bool open_squelch) {
@@ -303,7 +304,7 @@ void APRS_sendMsg(void *_buffer, size_t length) {
     packet[12+length] = h+48;
     packet[13+length] = d+48;
     packet[14+length] = n+48;
-    
+
     APRS_sendPkt(packet, payloadLength);
     free(packet);
 }

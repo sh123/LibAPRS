@@ -19,12 +19,15 @@
 // Sampling & timer setup
 #define CONFIG_AFSK_DAC_SAMPLERATE 9600
 
+// Do not use tx led
+#define CONFIG_AFSK_NO_TX_LED
+
 // Port settings
 #if TARGET_CPU == m328p
     #define DAC_PORT PORTD
     #define DAC_DDR  DDRD
-    #define LED_PORT PORTB
-    #define LED_DDR  DDRB
+    #define LED_PORT PORTC
+    #define LED_DDR  DDRC
     #define ADC_PORT PORTC
     #define ADC_DDR  DDRC
 #endif

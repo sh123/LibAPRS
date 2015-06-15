@@ -120,13 +120,26 @@ typedef struct Afsk
 // to configure the pins as output pins, and the _ON()
 // and _OFF() functions writes to the PORT registers
 // to turn the pins on or off.
+
+#ifdef CONFIG_AFSK_NO_TX_LED
+#define LED_TX_INIT() do { } while (0)
+#define LED_TX_ON()   do { } while (0)
+#define LED_TX_OFF()  do { } while (0)
+#else
 #define LED_TX_INIT() do { LED_DDR |= _BV(1); } while (0)
 #define LED_TX_ON()   do { LED_PORT |= _BV(1); } while (0)
 #define LED_TX_OFF()  do { LED_PORT &= ~_BV(1); } while (0)
+#endif
 
+#ifdef CONFIG_AFSK_NO_RX_LED
+#define LED_RX_INIT() do { } while (0)
+#define LED_RX_ON()   do { } while (0)
+#define LED_RX_OFF()  do { } while (0)
+#else
 #define LED_RX_INIT() do { LED_DDR |= _BV(2); } while (0)
 #define LED_RX_ON()   do { LED_PORT |= _BV(2); } while (0)
 #define LED_RX_OFF()  do { LED_PORT &= ~_BV(2); } while (0)
+#endif
 
 void AFSK_init(Afsk *afsk);
 void AFSK_transmit(char *buffer, size_t size);
