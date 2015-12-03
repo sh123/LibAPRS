@@ -1,16 +1,25 @@
+#include "device.h"
 #include "Arduino.h"
 #include "AFSK.h"
 #include "AX25.h"
+#include "KISS.h"
 
 Afsk modem;
 AX25Ctx AX25;
+
+#if SERIAL_PROTOCOL == PROTOCOL_KISS || defined(USE_AX25_CTX)
+extern void aprs_msg_callback(struct AX25Ctx *ctx);
+#else
 extern void aprs_msg_callback(struct AX25Msg *msg);
+#endif
+
 #define countof(a) sizeof(a)/sizeof(a[0])
 
 int LibAPRS_vref = REF_3V3;
 bool LibAPRS_open_squelch = false;
 
-unsigned long custom_preamble = 350UL;
+//unsigned long custom_preamble = 350UL;
+unsigned long custom_preamble = 500UL;
 unsigned long custom_tail = 50UL;
 
 AX25Call src;

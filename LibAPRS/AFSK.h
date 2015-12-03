@@ -38,10 +38,15 @@ inline static uint8_t sinSample(uint16_t i) {
 
 #define CPU_FREQ F_CPU
 
+#ifdef USE_APRS_TRACKER
 #define CONFIG_AFSK_RX_BUFLEN 64
-#define CONFIG_AFSK_TX_BUFLEN 64   
+#define CONFIG_AFSK_TX_BUFLEN 32
+#else
+#define CONFIG_AFSK_RX_BUFLEN 64
+#define CONFIG_AFSK_TX_BUFLEN 64
+#endif
 #define CONFIG_AFSK_RXTIMEOUT 0
-#define CONFIG_AFSK_PREAMBLE_LEN 150UL
+#define CONFIG_AFSK_PREAMBLE_LEN 500UL
 #define CONFIG_AFSK_TRAILER_LEN 50UL
 #define SAMPLERATE 9600
 #define BITRATE    1200
@@ -120,26 +125,27 @@ typedef struct Afsk
 // to configure the pins as output pins, and the _ON()
 // and _OFF() functions writes to the PORT registers
 // to turn the pins on or off.
+#ifdef USE_APRS_TRACKER
+#define LED_PIN_TX 1
+#define LED_PIN_RX 2
+#else
+#define LED_PIN_TX 0
+#define LED_PIN_RX 1
+#endif
 
 #ifdef CONFIG_AFSK_NO_TX_LED
-#define LED_TX_INIT() do { } while (0)
-#define LED_TX_ON()   do { } while (0)
-#define LED_TX_OFF()  do { } while (0)
+#define LED_TX_INIT() do {  } while (0)
+#define LED_TX_ON()   do {  } while (0)
+#define LED_TX_OFF()  do {  } while (0)
 #else
-#define LED_TX_INIT() do { LED_DDR |= _BV(1); } while (0)
-#define LED_TX_ON()   do { LED_PORT |= _BV(1); } while (0)
-#define LED_TX_OFF()  do { LED_PORT &= ~_BV(1); } while (0)
+#define LED_TX_INIT() do { LED_DDR |= _BV(LED_PIN_TX); } while (0)
+#define LED_TX_ON()   do { LED_PORT |= _BV(LED_PIN_TX); } while (0)
+#define LED_TX_OFF()  do { LED_PORT &= ~_BV(LED_PIN_TX); } while (0)
 #endif
 
-#ifdef CONFIG_AFSK_NO_RX_LED
-#define LED_RX_INIT() do { } while (0)
-#define LED_RX_ON()   do { } while (0)
-#define LED_RX_OFF()  do { } while (0)
-#else
-#define LED_RX_INIT() do { LED_DDR |= _BV(2); } while (0)
-#define LED_RX_ON()   do { LED_PORT |= _BV(2); } while (0)
-#define LED_RX_OFF()  do { LED_PORT &= ~_BV(2); } while (0)
-#endif
+#define LED_RX_INIT() do { LED_DDR |= _BV(LED_PIN_RX); } while (0)
+#define LED_RX_ON()   do { LED_PORT |= _BV(LED_PIN_RX); } while (0)
+#define LED_RX_OFF()  do { LED_PORT &= ~_BV(LED_PIN_RX); } while (0)
 
 void AFSK_init(Afsk *afsk);
 void AFSK_transmit(char *buffer, size_t size);

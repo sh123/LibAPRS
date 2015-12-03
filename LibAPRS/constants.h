@@ -4,3 +4,6 @@
 
 #define REF_3V3 0x01
 #define REF_5V  0x02
+
+#define PROTOCOL_KISS 0x01
+#define PROTOCOL_SERIAL 0x02
