@@ -4,6 +4,8 @@
 #include "AX25.h"
 #include "KISS.h"
 
+#define USE_COMPRESSION
+
 Afsk modem;
 AX25Ctx AX25;
 
@@ -39,8 +41,13 @@ int PATH2_SSID = 2;
 AX25Call path[4];
 
 // Location packet assembly fields
+#ifdef USE_COMPRESSION
+long latitude;
+long longtitude;
+#else
 char latitude[9];
 char longtitude[10];
+#endif
 char symbolTable = '/';
 char symbol = 'n';
 
@@ -143,6 +150,18 @@ void APRS_setSymbol(char sym) {
     symbol = sym;
 }
 
+#ifdef USE_COMPRESSION
+
+void APRS_setLat(float lat) {
+    latitude = 380926 * (90.0 - lat);
+}
+
+void APRS_setLon(float lon) {
+    longtitude = 190463 * (180.0 + lon);
+}
+
+#else
+
 void APRS_setLat(char *lat) {
     memset(latitude, 0, 9);
     int i = 0;
@@ -160,6 +179,8 @@ void APRS_setLon(char *lon) {
         i++;
     }
 }
+
+#endif
 
 void APRS_setPower(int s) {
     if (s >= 0 && s < 10) {
@@ -200,8 +221,13 @@ void APRS_printSettings() {
     Serial.print(F("Height:       ")); if (height < 10) { Serial.println(height); } else { Serial.println(F("N/A")); }
     Serial.print(F("Gain:         ")); if (gain < 10) { Serial.println(gain); } else { Serial.println(F("N/A")); }
     Serial.print(F("Directivity:  ")); if (directivity < 10) { Serial.println(directivity); } else { Serial.println(F("N/A")); }
+ #ifdef USE_COMPRESSION
+    Serial.print(F("Latitude:     ")); if (latitude != 0) { Serial.println(latitude); } else { Serial.println(F("N/A")); }
+    Serial.print(F("Longtitude:   ")); if (longtitude != 0) { Serial.println(longtitude); } else { Serial.println(F("N/A")); }
+ #else
     Serial.print(F("Latitude:     ")); if (latitude[0] != 0) { Serial.println(latitude); } else { Serial.println(F("N/A")); }
     Serial.print(F("Longtitude:   ")); if (longtitude[0] != 0) { Serial.println(longtitude); } else { Serial.println(F("N/A")); }
+ #endif
 }
 
 void APRS_sendPkt(void *_buffer, size_t length) {
@@ -238,6 +264,44 @@ void APRS_sendLoc(void *_buffer, size_t length) {
     }
     uint8_t *packet = (uint8_t*)malloc(payloadLength);
     uint8_t *ptr = packet;
+ #ifdef USE_COMPRESSION
+    long tmp;
+
+    packet[0] = '=';
+
+    // symbol table
+    packet[1] = symbolTable;
+
+    // latitude
+    tmp = latitude % (91 * 91 * 91);
+    packet[2] = 33 + latitude / (91 * 91 * 91);
+    packet[3] = 33 + tmp / (91 * 91);
+    tmp = tmp % (91 * 91);
+    packet[4] = 33 + tmp / 91;
+    tmp = tmp % 91;
+    packet[5] = tmp;
+
+    // longtitude
+    tmp = longtitude % (91 * 91 * 91);
+    packet[6] = 33 + longtitude / (91 * 91 * 91);
+    packet[7] = 33 + tmp / (91 * 91);
+    tmp = tmp % (91 * 91);
+    packet[8] = 33 + tmp / 91;
+    tmp = tmp % 91;
+    packet[9] = tmp;
+
+    // symbol
+    packet[10] = symbol;
+
+    // CS
+    packet[11] = '!'; // alt 0
+    packet[12] = '!';
+
+    // T
+    packet[13] = 'S'; // GGA, altitude
+
+    ptr += 14;
+ #else
     packet[0] = '=';
     packet[9] = symbolTable;
     packet[19] = symbol;
@@ -256,6 +320,7 @@ void APRS_sendLoc(void *_buffer, size_t length) {
         packet[26] = directivity+48;
         ptr+=7;
     }
+ #endif
     if (length > 0) {
         uint8_t *buffer = (uint8_t *)_buffer;
         memcpy(ptr, buffer, length);
