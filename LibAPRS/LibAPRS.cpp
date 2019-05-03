@@ -256,15 +256,11 @@ void APRS_sendPkt(void *_buffer, size_t length) {
 
 // Dynamic RAM usage of this function is 30 bytes
 void APRS_sendLoc(void *_buffer, size_t length) {
-    size_t payloadLength = 20+length;
-    bool usePHG = false;
-    if (power < 10 && height < 10 && gain < 10 && directivity < 9) {
-        usePHG = true;
-        payloadLength += 7;
-    }
+ #ifdef USE_COMPRESSION
+    size_t payloadLength = 12;
     uint8_t *packet = (uint8_t*)malloc(payloadLength);
     uint8_t *ptr = packet;
- #ifdef USE_COMPRESSION
+    
     long tmp;
 
     packet[0] = '=';
@@ -273,8 +269,9 @@ void APRS_sendLoc(void *_buffer, size_t length) {
     packet[1] = symbolTable;
 
     // latitude
-    tmp = latitude % (91 * 91 * 91);
-    packet[2] = 33 + latitude / (91 * 91 * 91);
+    tmp = latitude;
+    packet[2] = 33 + tmp / (91 * 91 * 91);
+    tmp = tmp % (91 * 91 * 91);
     packet[3] = 33 + tmp / (91 * 91);
     tmp = tmp % (91 * 91);
     packet[4] = 33 + tmp / 91;
@@ -282,8 +279,9 @@ void APRS_sendLoc(void *_buffer, size_t length) {
     packet[5] = 33 + tmp;
 
     // longtitude
-    tmp = longtitude % (91 * 91 * 91);
-    packet[6] = 33 + longtitude / (91 * 91 * 91);
+    tmp = longtitude;
+    packet[6] = 33 + tmp / (91 * 91 * 91);
+    tmp = tmp % (91 * 91 * 91);
     packet[7] = 33 + tmp / (91 * 91);
     tmp = tmp % (91 * 91);
     packet[8] = 33 + tmp / 91;
@@ -293,15 +291,18 @@ void APRS_sendLoc(void *_buffer, size_t length) {
     // symbol
     packet[10] = symbol;
 
-    // CS
-    packet[11] = '!'; // alt 0
-    packet[12] = '!';
-
-    // T
-    packet[13] = 'S'; // GGA, altitude
-
-    ptr += 14;
+    packet[11] = ' '; // no altitude
+    
+    ptr += 12;
  #else
+    size_t payloadLength = 20+length;
+    bool usePHG = false;
+    if (power < 10 && height < 10 && gain < 10 && directivity < 9) {
+        usePHG = true;
+        payloadLength += 7;
+    }
+    uint8_t *packet = (uint8_t*)malloc(payloadLength);
+    uint8_t *ptr = packet;
     packet[0] = '=';
     packet[9] = symbolTable;
     packet[19] = symbol;
@@ -320,12 +321,11 @@ void APRS_sendLoc(void *_buffer, size_t length) {
         packet[26] = directivity+48;
         ptr+=7;
     }
- #endif
     if (length > 0) {
         uint8_t *buffer = (uint8_t *)_buffer;
         memcpy(ptr, buffer, length);
     }
-
+ #endif
     APRS_sendPkt(packet, payloadLength);
     free(packet);
 }
