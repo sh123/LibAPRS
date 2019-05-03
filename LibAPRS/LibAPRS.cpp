@@ -279,7 +279,7 @@ void APRS_sendLoc(void *_buffer, size_t length) {
     tmp = tmp % (91 * 91);
     packet[4] = 33 + tmp / 91;
     tmp = tmp % 91;
-    packet[5] = tmp;
+    packet[5] = 33 + tmp;
 
     // longtitude
     tmp = longtitude % (91 * 91 * 91);
@@ -288,7 +288,7 @@ void APRS_sendLoc(void *_buffer, size_t length) {
     tmp = tmp % (91 * 91);
     packet[8] = 33 + tmp / 91;
     tmp = tmp % 91;
-    packet[9] = tmp;
+    packet[9] = 33 + tmp;
 
     // symbol
     packet[10] = symbol;
