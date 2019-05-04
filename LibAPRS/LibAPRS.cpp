@@ -18,8 +18,8 @@ extern void aprs_msg_callback(struct AX25Msg *msg);
 int LibAPRS_vref = REF_3V3;
 bool LibAPRS_open_squelch = false;
 
-unsigned long custom_preamble = 500UL;
-unsigned long custom_tail = 50UL;
+unsigned long custom_preamble = 350UL;
+unsigned long custom_tail = 35UL;
 
 AX25Call src;
 AX25Call dst;
@@ -231,11 +231,12 @@ void APRS_sendPkt(void *_buffer, size_t length) {
 void APRS_sendLoc(void *_buffer, size_t length) {
     size_t payloadLength = length;
     uint8_t *packet;
-    uint8_t *ptr = packet;
+    uint8_t *ptr;
 
     if (strlen(latitude) == 4) {
-        payloadLength += 12;
+        payloadLength += 14;
         packet = (uint8_t*)malloc(payloadLength);
+        ptr = packet;
         
         packet[0] = '=';
         packet[1] = symbolTable;
@@ -249,8 +250,10 @@ void APRS_sendLoc(void *_buffer, size_t length) {
 
         // symbol + csT
         packet[10] = symbol;
-        packet[11] = ' '; // no altitude
-        ptr += 2;
+        packet[11] = ' '; // no altitude/course
+        packet[12] = 's';
+        packet[13] = 'T';
+        ptr += 4;
     } else {
         payloadLength += 20;
         bool usePHG = false;
@@ -259,6 +262,7 @@ void APRS_sendLoc(void *_buffer, size_t length) {
             payloadLength += 7;
         }
         packet = (uint8_t*)malloc(payloadLength);
+        ptr = packet;
         packet[0] = '=';
         packet[9] = symbolTable;
         packet[19] = symbol;
@@ -279,7 +283,7 @@ void APRS_sendLoc(void *_buffer, size_t length) {
         }
     }
     if (length > 0) {
-    	uint8_t *buffer = (uint8_t *)_buffer;
+        uint8_t *buffer = (uint8_t *)_buffer;
         memcpy(ptr, buffer, length);
     }
     APRS_sendPkt(packet, payloadLength);
