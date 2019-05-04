@@ -8,8 +8,6 @@
 #include "AFSK.h"
 #include "AX25.h"
 
-#define USE_COMPRESSION
-
 void APRS_init(int reference, bool open_squelch);
 void APRS_poll(void);
 
@@ -24,13 +22,9 @@ void APRS_setTail(unsigned long tail);
 void APRS_useAlternateSymbolTable(bool use);
 void APRS_setSymbol(char sym);
 
-#ifdef USE_COMPRESSION
-void APRS_setLat(float lat);
-void APRS_setLon(float lon);
-#else
 void APRS_setLat(char *lat);
 void APRS_setLon(char *lon);
-#endif
+
 void APRS_setPower(int s);
 void APRS_setHeight(int s);
 void APRS_setGain(int s);

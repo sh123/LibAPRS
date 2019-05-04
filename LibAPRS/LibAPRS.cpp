@@ -4,8 +4,6 @@
 #include "AX25.h"
 #include "KISS.h"
 
-#define USE_COMPRESSION
-
 Afsk modem;
 AX25Ctx AX25;
 
@@ -20,7 +18,6 @@ extern void aprs_msg_callback(struct AX25Msg *msg);
 int LibAPRS_vref = REF_3V3;
 bool LibAPRS_open_squelch = false;
 
-//unsigned long custom_preamble = 350UL;
 unsigned long custom_preamble = 500UL;
 unsigned long custom_tail = 50UL;
 
@@ -41,13 +38,8 @@ int PATH2_SSID = 2;
 AX25Call path[4];
 
 // Location packet assembly fields
-#ifdef USE_COMPRESSION
-long latitude;
-long longtitude;
-#else
 char latitude[9];
 char longtitude[10];
-#endif
 char symbolTable = '/';
 char symbol = 'n';
 
@@ -150,18 +142,6 @@ void APRS_setSymbol(char sym) {
     symbol = sym;
 }
 
-#ifdef USE_COMPRESSION
-
-void APRS_setLat(float lat) {
-    latitude = 380926 * (90.0 - lat);
-}
-
-void APRS_setLon(float lon) {
-    longtitude = 190463 * (180.0 + lon);
-}
-
-#else
-
 void APRS_setLat(char *lat) {
     memset(latitude, 0, 9);
     int i = 0;
@@ -179,8 +159,6 @@ void APRS_setLon(char *lon) {
         i++;
     }
 }
-
-#endif
 
 void APRS_setPower(int s) {
     if (s >= 0 && s < 10) {
@@ -221,13 +199,8 @@ void APRS_printSettings() {
     Serial.print(F("Height:       ")); if (height < 10) { Serial.println(height); } else { Serial.println(F("N/A")); }
     Serial.print(F("Gain:         ")); if (gain < 10) { Serial.println(gain); } else { Serial.println(F("N/A")); }
     Serial.print(F("Directivity:  ")); if (directivity < 10) { Serial.println(directivity); } else { Serial.println(F("N/A")); }
- #ifdef USE_COMPRESSION
-    Serial.print(F("Latitude:     ")); if (latitude != 0) { Serial.println(latitude); } else { Serial.println(F("N/A")); }
-    Serial.print(F("Longtitude:   ")); if (longtitude != 0) { Serial.println(longtitude); } else { Serial.println(F("N/A")); }
- #else
     Serial.print(F("Latitude:     ")); if (latitude[0] != 0) { Serial.println(latitude); } else { Serial.println(F("N/A")); }
     Serial.print(F("Longtitude:   ")); if (longtitude[0] != 0) { Serial.println(longtitude); } else { Serial.println(F("N/A")); }
- #endif
 }
 
 void APRS_sendPkt(void *_buffer, size_t length) {
@@ -256,76 +229,59 @@ void APRS_sendPkt(void *_buffer, size_t length) {
 
 // Dynamic RAM usage of this function is 30 bytes
 void APRS_sendLoc(void *_buffer, size_t length) {
- #ifdef USE_COMPRESSION
-    size_t payloadLength = 12;
-    uint8_t *packet = (uint8_t*)malloc(payloadLength);
+    size_t payloadLength = length;
+    uint8_t *packet;
     uint8_t *ptr = packet;
-    
-    long tmp;
 
-    packet[0] = '=';
+    if (strlen(latitude) == 4) {
+        payloadLength += 12;
+        packet = (uint8_t*)malloc(payloadLength);
+        
+        packet[0] = '=';
+        packet[1] = symbolTable;
+        ptr += 2;
 
-    // symbol table
-    packet[1] = symbolTable;
+        memcpy(ptr, latitude, 4);
+        ptr += 4;
 
-    // latitude
-    tmp = latitude;
-    packet[2] = 33 + tmp / (91 * 91 * 91);
-    tmp = tmp % (91 * 91 * 91);
-    packet[3] = 33 + tmp / (91 * 91);
-    tmp = tmp % (91 * 91);
-    packet[4] = 33 + tmp / 91;
-    tmp = tmp % 91;
-    packet[5] = 33 + tmp;
+        memcpy(ptr, longtitude, 4);
+        ptr += 4;
 
-    // longtitude
-    tmp = longtitude;
-    packet[6] = 33 + tmp / (91 * 91 * 91);
-    tmp = tmp % (91 * 91 * 91);
-    packet[7] = 33 + tmp / (91 * 91);
-    tmp = tmp % (91 * 91);
-    packet[8] = 33 + tmp / 91;
-    tmp = tmp % 91;
-    packet[9] = 33 + tmp;
-
-    // symbol
-    packet[10] = symbol;
-
-    packet[11] = ' '; // no altitude
-    
-    ptr += 12;
- #else
-    size_t payloadLength = 20+length;
-    bool usePHG = false;
-    if (power < 10 && height < 10 && gain < 10 && directivity < 9) {
-        usePHG = true;
-        payloadLength += 7;
-    }
-    uint8_t *packet = (uint8_t*)malloc(payloadLength);
-    uint8_t *ptr = packet;
-    packet[0] = '=';
-    packet[9] = symbolTable;
-    packet[19] = symbol;
-    ptr++;
-    memcpy(ptr, latitude, 8);
-    ptr += 9;
-    memcpy(ptr, longtitude, 9);
-    ptr += 10;
-    if (usePHG) {
-        packet[20] = 'P';
-        packet[21] = 'H';
-        packet[22] = 'G';
-        packet[23] = power+48;
-        packet[24] = height+48;
-        packet[25] = gain+48;
-        packet[26] = directivity+48;
-        ptr+=7;
+        // symbol + csT
+        packet[10] = symbol;
+        packet[11] = ' '; // no altitude
+        ptr += 2;
+    } else {
+        payloadLength += 20;
+        bool usePHG = false;
+        if (power < 10 && height < 10 && gain < 10 && directivity < 9) {
+            usePHG = true;
+            payloadLength += 7;
+        }
+        packet = (uint8_t*)malloc(payloadLength);
+        packet[0] = '=';
+        packet[9] = symbolTable;
+        packet[19] = symbol;
+        ptr++;
+        memcpy(ptr, latitude, 8);
+        ptr += 9;
+        memcpy(ptr, longtitude, 9);
+        ptr += 10;
+        if (usePHG) {
+            packet[20] = 'P';
+            packet[21] = 'H';
+            packet[22] = 'G';
+            packet[23] = power+48;
+            packet[24] = height+48;
+            packet[25] = gain+48;
+            packet[26] = directivity+48;
+            ptr+=7;
+        }
     }
     if (length > 0) {
-        uint8_t *buffer = (uint8_t *)_buffer;
+    	uint8_t *buffer = (uint8_t *)_buffer;
         memcpy(ptr, buffer, length);
     }
- #endif
     APRS_sendPkt(packet, payloadLength);
     free(packet);
 }
