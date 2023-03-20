@@ -1,5 +1,4 @@
 // Based on work by Francesco Sacchi
-
 #include "Arduino.h"
 #include <string.h>
 #include <ctype.h>
@@ -10,7 +9,6 @@
 
 #define countof(a) sizeof(a)/sizeof(a[0])
 #define MIN(a,b) ({ typeof(a) _a = (a); typeof(b) _b = (b); ((typeof(_a))((_a < _b) ? _a : _b)); })
-#define DECODE_CALL(buf, addr) for (unsigned i = 0; i < sizeof((addr))-CALL_OVERSPACE; i++) { char c = (*(buf)++ >> 1); (addr)[i] = (c == ' ') ? '\x0' : c; }
 #define AX25_SET_REPEATED(msg, idx, val) do { if (val) { (msg)->rpt_flags |= _BV(idx); } else { (msg)->rpt_flags &= ~_BV(idx) ; } } while(0)
 
 extern int LibAPRS_vref;
@@ -23,6 +21,9 @@ void ax25_init(AX25Ctx *ctx, ax25_callback_t hook) {
 }
 
 static void ax25_decode(AX25Ctx *ctx) {
+#if SERIAL_PROTOCOL == PROTOCOL_KISS || defined(USE_AX25_CTX)
+    if (ctx->hook) ctx->hook(ctx);
+#else
     AX25Msg msg;
     uint8_t *buf = ctx->buf;
 
@@ -53,8 +54,8 @@ static void ax25_decode(AX25Ctx *ctx) {
         cli();
         ctx->hook(&msg);
         sei();
-    }   
-
+    }
+#endif
 }
 
 void ax25_poll(AX25Ctx *ctx) {
@@ -71,8 +72,8 @@ void ax25_poll(AX25Ctx *ctx) {
                 }
             }
             ctx->sync = true;
-            ctx->crc_in = CRC_CCIT_INIT_VAL;
             ctx->frame_len = 0;
+            ctx->crc_in = CRC_CCIT_INIT_VAL;
             continue;
         }
 

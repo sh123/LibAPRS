@@ -1,11 +1,14 @@
 #include <string.h>
 #include "AFSK.h"
 #include "Arduino.h"
+#include "time.h"
 
 extern unsigned long custom_preamble;
 extern unsigned long custom_tail;
 extern int LibAPRS_vref;
 extern bool LibAPRS_open_squelch;
+
+extern volatile ticks_t _clock;
 
 bool hw_afsk_dac_isr = false;
 bool hw_5v_ref = false;
@@ -467,9 +470,13 @@ ISR(ADC_vect) {
         DAC_PORT = 128;
     }
 
+#ifdef USE_APRS_TRACKER
     poll_timer++;
     if (poll_timer > 3) {
         poll_timer = 0;
         APRS_poll();
     }
+#else
+    ++_clock;
+#endif
 }

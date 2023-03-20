@@ -24,6 +24,7 @@ void APRS_setSymbol(char sym);
 
 void APRS_setLat(char *lat);
 void APRS_setLon(char *lon);
+
 void APRS_setPower(int s);
 void APRS_setHeight(int s);
 void APRS_setGain(int s);

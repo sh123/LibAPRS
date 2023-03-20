@@ -20,7 +20,11 @@
 struct AX25Ctx;     // Forward declarations
 struct AX25Msg;
 
+#if SERIAL_PROTOCOL == PROTOCOL_KISS || defined(USE_AX25_CTX)
+typedef void (*ax25_callback_t)(struct AX25Ctx *ctx);
+#else
 typedef void (*ax25_callback_t)(struct AX25Msg *msg);
+#endif
 
 typedef struct AX25Ctx {
     uint8_t buf[AX25_MAX_FRAME_LEN];
@@ -37,6 +41,9 @@ typedef struct AX25Ctx {
 #define AX25_CALL(str, id) {.call = (str), .ssid = (id) }
 #define AX25_MAX_RPT 8
 #define AX25_REPEATED(msg, n) ((msg)->rpt_flags & BV(n))
+#define DECODE_CALL(buf, addr) for (unsigned i = 0; i < sizeof((addr))-CALL_OVERSPACE; i++) { char c = (*(buf)++ >> 1); (addr)[i] = (c == ' ') ? '\x0' : c; }
+#define DECODE_CALL2(buf, addr) for (unsigned i = 0; i < 6; i++) { char c = (*(buf)++ >> 1); (addr)[i] = (c == ' ') ? '\x0' : c; }
+#define countof(a) sizeof(a)/sizeof(a[0])
 
 #define CALL_OVERSPACE 1
 

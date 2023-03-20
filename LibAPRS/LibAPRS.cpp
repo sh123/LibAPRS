@@ -1,17 +1,25 @@
+#include "device.h"
 #include "Arduino.h"
 #include "AFSK.h"
 #include "AX25.h"
+#include "KISS.h"
 
 Afsk modem;
 AX25Ctx AX25;
+
+#if SERIAL_PROTOCOL == PROTOCOL_KISS || defined(USE_AX25_CTX)
+extern void aprs_msg_callback(struct AX25Ctx *ctx);
+#else
 extern void aprs_msg_callback(struct AX25Msg *msg);
+#endif
+
 #define countof(a) sizeof(a)/sizeof(a[0])
 
 int LibAPRS_vref = REF_3V3;
 bool LibAPRS_open_squelch = false;
 
 unsigned long custom_preamble = 350UL;
-unsigned long custom_tail = 50UL;
+unsigned long custom_tail = 35UL;
 
 AX25Call src;
 AX25Call dst;
@@ -49,6 +57,7 @@ int message_seq = 0;
 char lastMessage[67];
 size_t lastMessageLen;
 bool message_autoAck = false;
+
 /////////////////////////
 
 void APRS_init(int reference, bool open_squelch) {
@@ -220,37 +229,63 @@ void APRS_sendPkt(void *_buffer, size_t length) {
 
 // Dynamic RAM usage of this function is 30 bytes
 void APRS_sendLoc(void *_buffer, size_t length) {
-    size_t payloadLength = 20+length;
-    bool usePHG = false;
-    if (power < 10 && height < 10 && gain < 10 && directivity < 9) {
-        usePHG = true;
-        payloadLength += 7;
-    }
-    uint8_t *packet = (uint8_t*)malloc(payloadLength);
-    uint8_t *ptr = packet;
-    packet[0] = '=';
-    packet[9] = symbolTable;
-    packet[19] = symbol;
-    ptr++;
-    memcpy(ptr, latitude, 8);
-    ptr += 9;
-    memcpy(ptr, longtitude, 9);
-    ptr += 10;
-    if (usePHG) {
-        packet[20] = 'P';
-        packet[21] = 'H';
-        packet[22] = 'G';
-        packet[23] = power+48;
-        packet[24] = height+48;
-        packet[25] = gain+48;
-        packet[26] = directivity+48;
-        ptr+=7;
+    size_t payloadLength = length;
+    uint8_t *packet;
+    uint8_t *ptr;
+
+    if (strlen(latitude) == 4) {
+        payloadLength += 14;
+        packet = (uint8_t*)malloc(payloadLength);
+        ptr = packet;
+        
+        packet[0] = '=';
+        packet[1] = symbolTable;
+        ptr += 2;
+
+        memcpy(ptr, latitude, 4);
+        ptr += 4;
+
+        memcpy(ptr, longtitude, 4);
+        ptr += 4;
+
+        // symbol + csT
+        packet[10] = symbol;
+        packet[11] = ' '; // no altitude/course
+        packet[12] = 's';
+        packet[13] = 'T';
+        ptr += 4;
+    } else {
+        payloadLength += 20;
+        bool usePHG = false;
+        if (power < 10 && height < 10 && gain < 10 && directivity < 9) {
+            usePHG = true;
+            payloadLength += 7;
+        }
+        packet = (uint8_t*)malloc(payloadLength);
+        ptr = packet;
+        packet[0] = '=';
+        packet[9] = symbolTable;
+        packet[19] = symbol;
+        ptr++;
+        memcpy(ptr, latitude, 8);
+        ptr += 9;
+        memcpy(ptr, longtitude, 9);
+        ptr += 10;
+        if (usePHG) {
+            packet[20] = 'P';
+            packet[21] = 'H';
+            packet[22] = 'G';
+            packet[23] = power+48;
+            packet[24] = height+48;
+            packet[25] = gain+48;
+            packet[26] = directivity+48;
+            ptr+=7;
+        }
     }
     if (length > 0) {
         uint8_t *buffer = (uint8_t *)_buffer;
         memcpy(ptr, buffer, length);
     }
-
     APRS_sendPkt(packet, payloadLength);
     free(packet);
 }
@@ -303,7 +338,7 @@ void APRS_sendMsg(void *_buffer, size_t length) {
     packet[12+length] = h+48;
     packet[13+length] = d+48;
     packet[14+length] = n+48;
-    
+
     APRS_sendPkt(packet, payloadLength);
     free(packet);
 }
