@@ -18,8 +18,8 @@ extern void aprs_msg_callback(struct AX25Msg *msg);
 int LibAPRS_vref = REF_3V3;
 bool LibAPRS_open_squelch = false;
 
-unsigned long custom_preamble = 350UL;
-unsigned long custom_tail = 35UL;
+unsigned long custom_preamble = 600UL;
+unsigned long custom_tail = 100UL;
 
 AX25Call src;
 AX25Call dst;
